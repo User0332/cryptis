@@ -44,7 +44,7 @@ def all_permut(n: int):
 
 seen_pairings = set[tuple[int, int]]()
 
-N = 6
+N = 10
 
 for i, round_gen in enumerate(round_robin_scheduler(N), start=1):
 	print(f"Round {i}")
@@ -52,8 +52,7 @@ for i, round_gen in enumerate(round_robin_scheduler(N), start=1):
 	for pairing in round_gen:
 		print(f"  Team {pairing[0]} vs Team {pairing[1]}")
 
-		if pairing in seen_pairings:
-			assert False, f"Duplicate match found! ({pairing})"
+		assert pairing not in seen_pairings, f"Duplicate match found! ({pairing})"
 
 		seen_pairings.add(pairing)
 
