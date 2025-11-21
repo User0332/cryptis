@@ -1,63 +1,10 @@
 # Demonstration of the Diffie-Hellman Key Exchange
 
+from dhke_common import Agent, CommunicationChannel, PRIVKEY_MIN
+from pohlig_hellman import pohlig_hellman
+from babystep_giantstep import babystep_giantstep
+from xorcrypt import decrypt
 import random
-from xorcrypt import encrypt, decrypt
-
-PRIVKEY_MIN = 1
-
-class CommunicationChannel:
-	def __init__(self):
-		self._messages: list[str | bytes | int] = []
-
-	def send(self, label: str, message: str | bytes | int):
-		self._messages.append((label, message))
-
-	def peek(self) -> tuple[str, str | bytes | int]:
-		return self._messages[-1]
-	
-	def get_first(self, label: str) -> str | bytes | int | None:
-		for msg in self._messages:
-			if msg[0] == label: return msg[1]
-
-		return None
-	
-	def __str__(self):
-		return "\n".join(f"{label}: {message}" for label, message in self._messages)
-
-class Agent:
-	def __init__(self, name: str, g: int, p: int):
-		self.name = name
-		self._priv = random.randint(PRIVKEY_MIN, p)
-		self.pub: int = (g^self._priv) % p
-		self._shared_secret: int = None
-		self.foreign_pub: int = None
-		self.g = g
-		self.p = p
-
-	def send_pubkey(self, channel: CommunicationChannel):
-		channel.send(f"Public Key of {self.name}", self.pub)
-
-	def receive_pubkey(self, channel: CommunicationChannel):
-		self.foreign_pub = channel.peek()[1] # non-validating
-
-	def compute_shared_secret(self):
-		assert self.foreign_pub is not None, "No connection established!"
-
-		self._shared_secret = (self.foreign_pub^self._priv) % self.p
-
-	def send_message(self, message: str, channel: CommunicationChannel):
-		assert self._shared_secret is not None, "No shared secret established!"
-
-		ciphertext = encrypt(message, self._shared_secret)
-		channel.send("Message", ciphertext)
-
-	def receive_message(self, channel: CommunicationChannel) -> str:
-		assert self._shared_secret is not None, "No shared secret established!"
-
-		ciphertext = channel.peek()[1] # non-validating
-		message = decrypt(ciphertext, self._shared_secret)
-
-		return message
 
 	
 p = 104729
@@ -99,16 +46,45 @@ print(f"Eve must solve s ≡ A^b (mod p). She knows A & p, so she must compute b
 # wait this is an O(n) problem... that's not hard... right?
 
 for b in range(PRIVKEY_MIN, p + 1):
-	if ((g^b) % p) == other_known_pub:
+	if pow(g, b, p) == other_known_pub:
 		print(f"Eve has cracked {bob.name}'s private key: {b}, {bob.name}'s actual private key is {bob._priv} [from a divine revelation]")
 		break
 else:
 	raise ValueError("wait... this is impossible...") # ok, I realized the bug; this doesn't happen anymore because I forgot that modulo has higher operator precedence than xor so my public key and and shared secrets were actually not guaranteed to be mod p
 
-s = (known_pub^b) % p
+s = pow(known_pub, b, p)
 
 print(f"Eve has now successfully computed the shared secret {s}.")
 
 message = default.get_first("Message")
 
 print(f"Eve has decrypted the message {message!r} -> {decrypt(message, s)!r}")
+
+
+print("Attempting to crack the privkey with baby-step giant-step:")
+
+N = p - 1 # worst possible case
+
+privkey = babystep_giantstep(p, g, other_known_pub)
+
+print(f"Eve has cracked the private key using babystep-giantstep: {privkey}")
+
+s = pow(known_pub, privkey, p)
+
+print(f"Eve has now successfully computed the shared secret {s}.")
+
+
+
+print("Attempting to crack the privkey with pohlig-hellman X babystep-giantstep:")
+
+privkey = pohlig_hellman(p, g, other_known_pub)
+
+print(f"Eve has cracked the private key using pohlig-hellman X babystep-giantstep: {privkey}")
+
+s = pow(known_pub, privkey, p)
+
+print(f"Eve has now successfully computed the shared secret {s}.")
+
+
+# note that we might get different solns for each result (real privkey, brute force, babystep-giantstep, pohlig-hellman) but the same shared secret
+# because two exponents might be congruent mod p-1
