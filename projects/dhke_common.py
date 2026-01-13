@@ -1,26 +1,7 @@
 import random
-from xorcrypt import encrypt, decrypt
+from cryptcommon import CommunicationChannel, xor_encrypt, xor_decrypt
 
 PRIVKEY_MIN = 1
-
-class CommunicationChannel:
-	def __init__(self):
-		self._messages: list[str | bytes | int] = []
-
-	def send(self, label: str, message: str | bytes | int):
-		self._messages.append((label, message))
-
-	def peek(self) -> tuple[str, str | bytes | int]:
-		return self._messages[-1]
-	
-	def get_first(self, label: str) -> str | bytes | int | None:
-		for msg in self._messages:
-			if msg[0] == label: return msg[1]
-
-		return None
-	
-	def __str__(self):
-		return "\n".join(f"{label}: {message}" for label, message in self._messages)
 
 class Agent:
 	def __init__(self, name: str, g: int, p: int):
@@ -46,13 +27,13 @@ class Agent:
 	def send_message(self, message: str, channel: CommunicationChannel):
 		assert self._shared_secret is not None, "No shared secret established!"
 
-		ciphertext = encrypt(message, self._shared_secret)
+		ciphertext = xor_encrypt(message, self._shared_secret)
 		channel.send("Message", ciphertext)
 
 	def receive_message(self, channel: CommunicationChannel) -> str:
 		assert self._shared_secret is not None, "No shared secret established!"
 
 		ciphertext = channel.peek()[1] # non-validating
-		message = decrypt(ciphertext, self._shared_secret)
+		message = xor_decrypt(ciphertext, self._shared_secret)
 
 		return message

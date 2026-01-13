@@ -1,9 +1,9 @@
 # Demonstration of the Diffie-Hellman Key Exchange
 
-from dhke_common import Agent, CommunicationChannel, PRIVKEY_MIN
+from cryptcommon import CommunicationChannel, xor_decrypt
+from dhke_common import Agent, PRIVKEY_MIN
 from pohlig_hellman import pohlig_hellman
 from babystep_giantstep import babystep_giantstep
-from xorcrypt import decrypt
 import random
 
 	
@@ -58,7 +58,7 @@ print(f"Eve has now successfully computed the shared secret {s}.")
 
 message = default.get_first("Message")
 
-print(f"Eve has decrypted the message {message!r} -> {decrypt(message, s)!r}")
+print(f"Eve has decrypted the message {message!r} -> {xor_decrypt(message, s)!r}")
 
 
 print("Attempting to crack the privkey with baby-step giant-step:")
